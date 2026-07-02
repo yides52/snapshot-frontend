@@ -1,2 +1,76 @@
 <!DOCTYPE html>
-<html><body><h1>Snapshot Studio - Coming soon</h1></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emily's Snapshot Studio</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;900&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style type="text/css" nonce="">
+.redacted {
+  color: red !important;
+}</style></head>
+<body>
+  <div class="glow-bg"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="honey-drop">🍯</span>
+      <h1>Emily's <em>Snapshot</em> Studio</h1>
+    </div>
+    <div class="topbar-actions">
+      <button class="ghost-btn" id="refreshBtn">↻ Refresh</button>
+      <button class="primary-btn" id="addClientBtn">+ New Client</button>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <div class="header-strip">
+      <div class="stat">
+        <span class="stat-num" id="clientCount">0</span>
+        <span class="stat-label">Clients</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="readyCount">0</span>
+        <span class="stat-label">Ready</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="setupCount">0</span>
+        <span class="stat-label">Needs Setup</span>
+      </div>
+    </div>
+
+    <div class="honeycomb" id="honeycomb">
+      <!-- hex cells injected by app.js -->
+    </div>
+
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <p>No clients yet. Tap <strong>+ New Client</strong> to get started.</p>
+    </div>
+  </main>
+
+  <!-- Add Client Modal -->
+  <div class="modal-backdrop" id="modalBackdrop" style="display:none;">
+    <div class="modal">
+      <h2>New Client</h2>
+      <label>
+        Client Name
+        <input type="text" id="newClientName" placeholder="e.g. ABC Construction">
+      </label>
+      <label>
+        URL Slug
+        <input type="text" id="newClientSlug" placeholder="e.g. abc-construction">
+        <small>Lowercase, no spaces. This is the URL path.</small>
+      </label>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="cancelBtn">Cancel</button>
+        <button class="primary-btn" id="saveClientBtn">Create Client</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
