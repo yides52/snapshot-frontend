@@ -1,0 +1,370 @@
+
+/* =========================================================
+   Emily's Snapshot Studio — honeycomb dashboard
+   ========================================================= */
+ 
+:root {
+  --teal-deep:   #063d3d;
+  --teal-mid:    #0a5757;
+  --teal-glow:   #0f7f7f;
+  --cream:       #fff5e0;
+  --honey:       #ffc857;
+  --honey-dark:  #d99614;
+ 
+  /* jewel palette for hex faces */
+  --c1: #ff7a7a;   /* coral   */
+  --c2: #ffb347;   /* amber   */
+  --c3: #b7e26b;   /* lime    */
+  --c4: #58c9e8;   /* sky     */
+  --c5: #c8a2ff;   /* lavender*/
+  --c6: #ff6bb5;   /* magenta */
+  --c7: #ffb88c;   /* peach   */
+  --c8: #7de3c4;   /* mint    */
+ 
+  --status-ready: #b7e26b;
+  --status-setup: #ffb347;
+}
+ 
+* { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+html, body {
+  min-height: 100vh;
+  background: var(--teal-deep);
+  color: var(--cream);
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow-x: hidden;
+}
+ 
+/* soft radial glow behind everything */
+.glow-bg {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(15,127,127,0.55), transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(255,200,87,0.15), transparent 55%),
+    linear-gradient(180deg, var(--teal-deep), #032727);
+  z-index: -1;
+}
+ 
+/* -------------------------------------------- top bar */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28px 48px;
+}
+ 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+ 
+.honey-drop {
+  font-size: 34px;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+}
+ 
+.brand h1 {
+  font-family: 'Fraunces', serif;
+  font-weight: 900;
+  font-size: 32px;
+  letter-spacing: -0.5px;
+  color: var(--cream);
+}
+ 
+.brand h1 em {
+  color: var(--honey);
+  font-style: italic;
+  font-weight: 600;
+}
+ 
+.topbar-actions { display: flex; gap: 12px; }
+ 
+.primary-btn, .ghost-btn {
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s, background .15s;
+  border: none;
+}
+ 
+.primary-btn {
+  background: linear-gradient(180deg, var(--honey) 0%, var(--honey-dark) 100%);
+  color: #3a2500;
+  box-shadow: 0 4px 14px rgba(255,200,87,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
+}
+ 
+.primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255,200,87,0.5);
+}
+ 
+.ghost-btn {
+  background: rgba(255,245,224,0.08);
+  color: var(--cream);
+  border: 1px solid rgba(255,245,224,0.18);
+}
+ 
+.ghost-btn:hover { background: rgba(255,245,224,0.15); }
+ 
+/* -------------------------------------------- dashboard */
+.dashboard { padding: 12px 48px 80px; }
+ 
+.header-strip {
+  display: flex;
+  gap: 40px;
+  padding: 18px 0 40px;
+}
+ 
+.stat { display: flex; flex-direction: column; }
+ 
+.stat-num {
+  font-family: 'Fraunces', serif;
+  font-weight: 900;
+  font-size: 40px;
+  color: var(--honey);
+  line-height: 1;
+}
+ 
+.stat-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255,245,224,0.6);
+  margin-top: 6px;
+}
+ 
+/* -------------------------------------------- honeycomb grid */
+ 
+/* Each hex fits inside a 180×208 box; row-2 shifted by ~50%. */
+.honeycomb {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, 180px);
+  gap: 20px 30px;
+  justify-content: center;
+  padding-top: 20px;
+}
+ 
+/* offset every other row via CSS hack:
+   nth-child pattern creates the honeycomb offset */
+.honeycomb {
+  --hex-w: 180px;
+  --hex-h: 208px;
+  --gap-x: 30px;
+  --gap-y: 20px;
+}
+ 
+/* Actual honeycomb offset — use flex rows for correct tiling */
+.honeycomb {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+ 
+.hex-wrap {
+  width: var(--hex-w);
+  height: var(--hex-h);
+  margin: -22px 6px 0;   /* negative top margin tucks rows into hex points */
+  position: relative;
+  cursor: pointer;
+  transition: transform .25s cubic-bezier(.2,.9,.3,1.2);
+}
+ 
+.hex-wrap:hover { transform: translateY(-6px) scale(1.04); z-index: 5; }
+ 
+/* the hex itself */
+.hex {
+  width: 100%;
+  height: 100%;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(155deg, var(--face) 0%, var(--face-dark) 100%);
+  position: relative;
+  box-shadow:
+    0 12px 30px rgba(0,0,0,0.35),
+    inset 0 2px 0 rgba(255,255,255,0.35),
+    inset 0 -6px 10px rgba(0,0,0,0.25);
+}
+ 
+/* subtle highlight overlay for 3D pop */
+.hex::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(160deg, rgba(255,255,255,0.28), transparent 42%);
+  pointer-events: none;
+}
+ 
+/* content inside hex */
+.hex-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px 24px;
+  color: rgba(30, 20, 10, 0.85);
+}
+ 
+.hex-initials {
+  font-family: 'Fraunces', serif;
+  font-weight: 900;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -1px;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+}
+ 
+.hex-name {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 8px;
+  color: rgba(30, 20, 10, 0.75);
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+ 
+.hex-status {
+  position: absolute;
+  top: 26%;
+  right: 22%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.8);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+ 
+.hex-status.ready { background: var(--status-ready); }
+.hex-status.setup { background: var(--status-setup); }
+ 
+/* jewel-tone palette assigned by nth-child */
+.hex-wrap:nth-child(8n+1) .hex { --face: var(--c1); --face-dark: #c94f4f; }
+.hex-wrap:nth-child(8n+2) .hex { --face: var(--c2); --face-dark: #c88030; }
+.hex-wrap:nth-child(8n+3) .hex { --face: var(--c3); --face-dark: #7fac3d; }
+.hex-wrap:nth-child(8n+4) .hex { --face: var(--c4); --face-dark: #2e8fac; }
+.hex-wrap:nth-child(8n+5) .hex { --face: var(--c5); --face-dark: #8f6fc8; }
+.hex-wrap:nth-child(8n+6) .hex { --face: var(--c6); --face-dark: #c74a86; }
+.hex-wrap:nth-child(8n+7) .hex { --face: var(--c7); --face-dark: #c98356; }
+.hex-wrap:nth-child(8n) .hex { --face: var(--c8); --face-dark: #4bad91; }
+ 
+/* add-hex — cream colored, dashed */
+.hex-wrap.add-hex .hex {
+  background: rgba(255,245,224,0.08);
+  box-shadow: inset 0 0 0 2px rgba(255,245,224,0.3);
+}
+.hex-wrap.add-hex .hex::before { display: none; }
+.hex-wrap.add-hex .hex-inner {
+  color: var(--cream);
+}
+.hex-wrap.add-hex .hex-initials {
+  font-size: 48px;
+  color: var(--honey);
+  text-shadow: none;
+}
+.hex-wrap.add-hex .hex-name {
+  color: rgba(255,245,224,0.7);
+  font-weight: 500;
+}
+ 
+/* empty state */
+.empty-state {
+  text-align: center;
+  padding: 80px 40px;
+  color: rgba(255,245,224,0.5);
+  font-size: 16px;
+}
+ 
+/* -------------------------------------------- modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6,30,30,0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+ 
+.modal {
+  background: linear-gradient(180deg, #0a5757, #063d3d);
+  border: 1px solid rgba(255,245,224,0.15);
+  border-radius: 20px;
+  padding: 36px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+ 
+.modal h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 26px;
+  margin-bottom: 20px;
+  color: var(--cream);
+}
+ 
+.modal label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,245,224,0.85);
+  margin-bottom: 16px;
+}
+ 
+.modal input {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,245,224,0.2);
+  background: rgba(0,0,0,0.25);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 15px;
+  transition: border-color .15s;
+}
+ 
+.modal input:focus {
+  outline: none;
+  border-color: var(--honey);
+}
+ 
+.modal small {
+  display: block;
+  margin-top: 6px;
+  color: rgba(255,245,224,0.5);
+  font-weight: 400;
+  font-size: 12px;
+}
+ 
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+ 
+/* responsive */
+@media (max-width: 720px) {
+  .topbar { padding: 20px 20px; flex-direction: column; gap: 16px; align-items: flex-start; }
+  .brand h1 { font-size: 24px; }
+  .dashboard { padding: 12px 20px 80px; }
+  .header-strip { gap: 24px; padding: 12px 0 24px; }
+  .honeycomb { --hex-w: 140px; --hex-h: 160px; }
+  .hex-wrap { width: 140px; height: 160px; margin: -18px 4px 0; }
+  .hex-initials { font-size: 30px; }
+}
+ 
