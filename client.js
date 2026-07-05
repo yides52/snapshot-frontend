@@ -1,4 +1,3 @@
-
 // =========================================================
 // Client Setup Page — logic (Step 5: Emily wired to Anthropic)
 // =========================================================
@@ -52,15 +51,10 @@ async function loadExistingData() {
  
   if (templates && templates.length > 0) {
     currentTemplate = templates[0];
-    currentTokens = currentTemplate.tokens || [];
-    // Re-fetch raw text from Storage so Emily has it
-    try {
-      const { data: fileBlob } = await db.storage
-        .from('client-files').download(currentTemplate.file_path);
-      if (fileBlob) {
-        currentTemplate.raw_text = await extractRawTextFromBlob(fileBlob);
-      }
-    } catch (e) { console.warn('Template text load skipped:', e); }
+    currentTokens = (currentTemplate.tokens || []).filter(t => t.token);
+    // Retrieve stored PNG path (we hide it in the tokens array as a special marker)
+    const pngMarker = (currentTemplate.tokens || []).find(t => t._png_path);
+    if (pngMarker) currentTemplate.png_path = pngMarker._png_path;
     showTemplateStatus(currentTemplate);
     renderTokens();
   }
@@ -115,10 +109,28 @@ async function handleTemplate(file) {
   showTemplateStatus(currentTemplate);
   renderTokens();
  
+  // Render a preview image so Emily can see the template visually
+  emilySay(`Uploading and generating preview image so I can see it… (takes 10-20s)`);
+  try {
+    const res = await fetch(`${window.RENDER_API_URL}/render-template`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template_path: path })
+    });
+    const data = await res.json();
+    if (data.png_path) {
+      currentTemplate.png_path = data.png_path;
+      // Save PNG path to DB so it persists
+      await db.from('client_templates')
+        .update({ tokens: [...tokenObjs, { _png_path: data.png_path }] })
+        .eq('id', newTemplate.id);
+    }
+  } catch (e) { console.warn('Preview render failed:', e); }
+ 
   if (tokens.length === 0) {
-    emilySay(`Got your template! I don't see any <code>{{tokens}}</code> yet — no worries. Say "walk me through it" and I'll go section by section suggesting what to tokenize.`);
+    emilySay(`Preview ready! I can see your template now. Ask me to walk through it and suggest tokens.`);
   } else {
-    emilySay(`Great, I detected <strong>${tokens.length} tokens</strong> in your template. Upload some sample reports next so we can start mapping.`);
+    emilySay(`Preview ready. I detected <strong>${tokens.length} tokens</strong>. Upload some sample reports next so we can map them.`);
   }
 }
  
@@ -435,7 +447,7 @@ async function sendEmilyMessage() {
  
     const body = {
       client_name: currentClient.name,
-      template_text: (currentTemplate?.raw_text || '').slice(0, 2000),
+      template_png_path: currentTemplate?.png_path || null,
       report_names: currentReports.map(r => r.report_name).slice(0, 10),
       sample_paths: currentReports.map(r => r.sample_path).slice(0, 5),
       current_tokens: currentTokens.map(t => t.token).slice(0, 30),
@@ -488,3 +500,4 @@ function renderMarkdownLite(text) {
 // INIT
 // =========================================================
 loadClient();
+ 
