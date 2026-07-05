@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Setup — Emily's Snapshot Studio</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="client.css">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;900&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style type="text/css" nonce="">
+.redacted {
+  color: red !important;
+}</style></head>
+<body>
+  <div class="aurora">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+    <div class="blob b4"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <a href="/" class="back-link">←</a>
+      <h1 id="clientTitle">Loading…</h1>
+    </div>
+    <div class="topbar-actions">
+      <button class="ghost-btn" onclick="location.href='/'">Dashboard</button>
+      <button class="primary-btn" id="runWeekBtn">▶ Run This Week</button>
+    </div>
+  </header>
+
+  <main class="client-page">
+    <!-- Uploads column -->
+    <section class="panel uploads-panel">
+      <h2>1. Word Template</h2>
+      <p class="hint">Upload the .docx template with <code>{{tokens}}</code> where data should go.</p>
+      <div class="drop-zone" id="templateDrop">
+        <input type="file" id="templateInput" accept=".docx" hidden>
+        <div class="drop-inner">
+          <div class="drop-icon">📄</div>
+          <div class="drop-text">Drop .docx or click to upload</div>
+        </div>
+      </div>
+      <div class="uploaded-item" id="templateStatus" style="display:none;"></div>
+
+      <h2 style="margin-top:32px;">2. Sample Reports</h2>
+      <p class="hint">Upload one or more Excel files from QBD or QBO. Tag each.</p>
+      <div class="drop-zone" id="reportDrop">
+        <input type="file" id="reportInput" accept=".xlsx,.xls,.csv" hidden>
+        <div class="drop-inner">
+          <div class="drop-icon">📊</div>
+          <div class="drop-text">Drop Excel/CSV or click to upload</div>
+        </div>
+      </div>
+      <div class="reports-list" id="reportsList"></div>
+    </section>
+
+    <!-- Tokens/Mapping column -->
+    <section class="panel tokens-panel">
+      <h2>3. Token Mapping</h2>
+      <p class="hint">Tokens detected in your template. Map each to a source, or mark manual.</p>
+      <div class="tokens-list" id="tokensList">
+        <div class="tokens-empty">Upload a template to detect tokens.</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Emily floating chat bubble -->
+  <div class="emily-chat" id="emilyChat">
+    <button class="emily-bubble" id="emilyBubble" title="Chat with Emily">
+      <div class="emily-avatar">E</div>
+      <div class="emily-pulse"></div>
+    </button>
+
+    <div class="emily-panel" id="emilyPanel">
+      <header class="emily-header">
+        <div class="emily-header-left">
+          <div class="emily-avatar sm">E</div>
+          <div>
+            <div class="emily-name">Emily</div>
+            <div class="emily-role" id="emilyClientName">Your assistant</div>
+          </div>
+        </div>
+        <div class="emily-header-right">
+          <button class="emily-expand" id="emilyExpand" title="Expand">⛶</button>
+          <button class="emily-close" id="emilyClose" title="Close">×</button>
+        </div>
+      </header>
+      <div class="emily-messages" id="emilyMessages"></div>
+      <div class="emily-input">
+        <textarea id="emilyInput" placeholder="Type a message to Emily…" rows="1"></textarea>
+        <button id="emilySend">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="config.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
