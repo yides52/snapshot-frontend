@@ -1,4 +1,3 @@
-
 // =========================================================
 // Client Setup Page — logic (Step 5: Emily wired to Anthropic)
 // =========================================================
@@ -392,18 +391,22 @@ async function sendEmilyMessage() {
   }, 4000);
  
   try {
+    // Keep payload small so Render's edge doesn't 403
+    const shortHistory = chatHistory.slice(-8).map(m => ({
+      role: m.role,
+      content: (m.content || '').slice(0, 800)
+    }));
+ 
     const body = {
       client_name: currentClient.name,
-      template_text: currentTemplate?.raw_text || '',
-      report_names: currentReports.map(r => r.report_name),
-      current_tokens: currentTokens.map(t => t.token),
-      current_mappings: Object.values(currentMappings).map(m => ({
+      template_text: (currentTemplate?.raw_text || '').slice(0, 2000),
+      report_names: currentReports.map(r => r.report_name).slice(0, 10),
+      current_tokens: currentTokens.map(t => t.token).slice(0, 30),
+      current_mappings: Object.values(currentMappings).slice(0, 30).map(m => ({
         token: m.token,
-        report_id: m.report_id,
-        operation: m.operation,
-        config: m.config
+        operation: m.operation
       })),
-      history: chatHistory.slice(-20)  // last 20 messages
+      history: shortHistory
     };
  
     const res = await fetch(`${window.RENDER_API_URL}/chat`, {
