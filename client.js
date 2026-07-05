@@ -1,17 +1,19 @@
+
 // =========================================================
 // Client Setup Page — logic
 // =========================================================
-
+ 
 const db = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
+ 
 const params = new URLSearchParams(window.location.search);
 const slug = params.get('slug');
-
+ 
 let currentClient = null;
+let currentTemplate = null;      // {id, file_path, tokens, raw_text}
 let currentTokens = [];
 let currentReports = [];
 let currentMappings = {};
-
+ 
 const clientTitle = document.getElementById('clientTitle');
 const emilyClientName = document.getElementById('emilyClientName');
 const templateDrop = document.getElementById('templateDrop');
@@ -21,7 +23,7 @@ const reportDrop = document.getElementById('reportDrop');
 const reportInput = document.getElementById('reportInput');
 const reportsList = document.getElementById('reportsList');
 const tokensList = document.getElementById('tokensList');
-
+ 
 // =========================================================
 // LOAD CLIENT
 // =========================================================
@@ -30,65 +32,62 @@ async function loadClient() {
     clientTitle.textContent = 'Missing client slug';
     return;
   }
-
+ 
   const { data: client, error } = await db
     .from('clients')
     .select('*')
     .eq('slug', slug)
     .single();
-
+ 
   if (error || !client) {
     clientTitle.textContent = 'Client not found';
     return;
   }
-
+ 
   currentClient = client;
   clientTitle.textContent = client.name;
   emilyClientName.textContent = `${client.name}'s assistant`;
   document.title = `${client.name} — Emily's Snapshot Studio`;
-
+ 
   await loadExistingData();
   greetUser();
 }
-
+ 
 async function loadExistingData() {
-  // Load template
   const { data: templates } = await db
     .from('client_templates')
     .select('*')
     .eq('client_id', currentClient.id)
     .order('uploaded_at', { ascending: false })
     .limit(1);
-
+ 
   if (templates && templates.length > 0) {
-    const t = templates[0];
-    currentTokens = t.tokens || [];
-    showTemplateStatus(t);
+    currentTemplate = templates[0];
+    currentTokens = currentTemplate.tokens || [];
+    showTemplateStatus(currentTemplate);
     renderTokens();
   }
-
-  // Load reports
+ 
   const { data: reports } = await db
     .from('client_reports')
     .select('*')
     .eq('client_id', currentClient.id)
     .order('uploaded_at', { ascending: true });
-
+ 
   currentReports = reports || [];
   renderReports();
-
-  // Load mappings
+ 
   const { data: mappings } = await db
     .from('client_mappings')
     .select('*')
     .eq('client_id', currentClient.id);
-
+ 
   if (mappings) {
     mappings.forEach(m => currentMappings[m.token] = m);
     renderTokens();
   }
 }
-
+ 
 // =========================================================
 // TEMPLATE UPLOAD
 // =========================================================
@@ -103,65 +102,68 @@ templateDrop.addEventListener('drop', (e) => {
 templateInput.addEventListener('change', (e) => {
   if (e.target.files.length) handleTemplate(e.target.files[0]);
 });
-
+ 
 async function handleTemplate(file) {
   if (!file.name.endsWith('.docx')) {
     alert('Please upload a .docx file');
     return;
   }
-
-  // Extract tokens client-side using JSZip
-  const tokens = await extractTokensFromDocx(file);
-  if (tokens.length === 0) {
-    if (!confirm('No {{tokens}} detected in this template. Upload anyway?')) return;
-  }
-
+ 
+  // Extract tokens + raw text client-side using JSZip
+  const { tokens, rawText } = await parseDocx(file);
+ 
   // Upload to Supabase Storage
   const path = `${currentClient.id}/templates/${Date.now()}_${file.name}`;
   const { error: upErr } = await db.storage
     .from('client-files')
     .upload(path, file);
-
+ 
   if (upErr) {
     alert('Upload failed: ' + upErr.message);
     return;
   }
-
-  // Save record
+ 
   const tokenObjs = tokens.map(t => ({ token: t, label: t.replace(/_/g, ' '), is_manual: false }));
-  const { error: dbErr } = await db
+ 
+  const { data: newTemplate, error: dbErr } = await db
     .from('client_templates')
     .insert({
       client_id: currentClient.id,
       file_path: path,
       tokens: tokenObjs
-    });
-
+    })
+    .select()
+    .single();
+ 
   if (dbErr) {
     alert('DB error: ' + dbErr.message);
     return;
   }
-
+ 
+  currentTemplate = newTemplate;
+  currentTemplate.raw_text = rawText;   // keep in memory for Emily
   currentTokens = tokenObjs;
-  showTemplateStatus({ file_path: path, uploaded_at: new Date() });
+  showTemplateStatus(currentTemplate);
   renderTokens();
-  emilySay(`Great, I've detected <strong>${tokens.length} tokens</strong> in your template. Let's map them! Upload a sample report next.`);
+ 
+  if (tokens.length === 0) {
+    emilySay(`Got your template! I see it doesn't have any <code>{{tokens}}</code> yet — no problem. Let's go through it together and figure out what needs to be tokenized. Ask me anything, or say "walk me through it" and we'll start.`);
+  } else {
+    emilySay(`Great, I've detected <strong>${tokens.length} tokens</strong> in your template! Upload a sample report next so we can start mapping them.`);
+  }
 }
-
-async function extractTokensFromDocx(file) {
+ 
+async function parseDocx(file) {
   const buf = await file.arrayBuffer();
   const zip = await JSZip.loadAsync(buf);
   const docXml = await zip.file('word/document.xml').async('string');
-
-  // Strip XML tags to get plain text (approximate — good enough for token detection)
-  const text = docXml.replace(/<[^>]+>/g, '');
-
-  // Find {{tokens}} — allow spaces inside
-  const matches = text.match(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g) || [];
+  const rawText = docXml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+ 
+  const matches = rawText.match(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g) || [];
   const unique = [...new Set(matches.map(m => m.replace(/[\{\}\s]/g, '')))];
-  return unique;
+  return { tokens: unique, rawText };
 }
-
+ 
 function showTemplateStatus(t) {
   const name = t.file_path.split('/').pop().replace(/^\d+_/, '');
   templateStatus.style.display = 'flex';
@@ -173,9 +175,9 @@ function showTemplateStatus(t) {
     <button class="ghost-btn" style="padding:6px 12px;font-size:12px;" onclick="replaceTemplate()">Replace</button>
   `;
 }
-
+ 
 window.replaceTemplate = () => templateInput.click();
-
+ 
 // =========================================================
 // REPORT UPLOAD
 // =========================================================
@@ -190,21 +192,21 @@ reportDrop.addEventListener('drop', (e) => {
 reportInput.addEventListener('change', (e) => {
   if (e.target.files.length) handleReport(e.target.files[0]);
 });
-
+ 
 async function handleReport(file) {
   const reportName = prompt(`Name this report (e.g. "AR Aging", "P&L", "Estimates"):`, file.name.replace(/\.[^.]+$/, ''));
   if (!reportName) return;
-
+ 
   const path = `${currentClient.id}/samples/${Date.now()}_${file.name}`;
   const { error: upErr } = await db.storage
     .from('client-files')
     .upload(path, file);
-
+ 
   if (upErr) {
     alert('Upload failed: ' + upErr.message);
     return;
   }
-
+ 
   const { data: newRow, error: dbErr } = await db
     .from('client_reports')
     .insert({
@@ -215,18 +217,18 @@ async function handleReport(file) {
     })
     .select()
     .single();
-
+ 
   if (dbErr) {
     alert('DB error: ' + dbErr.message);
     return;
   }
-
+ 
   currentReports.push(newRow);
   renderReports();
   renderTokens();
   emilySay(`Got the <strong>${reportName}</strong> report. When we wire up the engine, I'll read its columns automatically.`);
 }
-
+ 
 function renderReports() {
   reportsList.innerHTML = '';
   currentReports.forEach(r => {
@@ -239,7 +241,7 @@ function renderReports() {
     `;
     reportsList.appendChild(row);
   });
-
+ 
   reportsList.querySelectorAll('input').forEach(inp => {
     inp.addEventListener('change', async (e) => {
       const id = e.target.dataset.id;
@@ -247,7 +249,7 @@ function renderReports() {
     });
   });
 }
-
+ 
 window.deleteReport = async (id) => {
   if (!confirm('Remove this report?')) return;
   await db.from('client_reports').delete().eq('id', id);
@@ -255,26 +257,31 @@ window.deleteReport = async (id) => {
   renderReports();
   renderTokens();
 };
-
+ 
 // =========================================================
 // TOKENS + MAPPING
 // =========================================================
 function renderTokens() {
   if (!currentTokens || currentTokens.length === 0) {
-    tokensList.innerHTML = '<div class="tokens-empty">Upload a template to detect tokens.</div>';
+    tokensList.innerHTML = `
+      <div class="tokens-empty">
+        ${currentTemplate
+          ? 'No tokens in your template yet. Ask Emily to help tokenize it — click her bubble in the bottom right.'
+          : 'Upload a template to detect tokens.'}
+      </div>`;
     return;
   }
-
+ 
   tokensList.innerHTML = '';
   currentTokens.forEach(t => {
     const mapping = currentMappings[t.token] || {};
     const row = document.createElement('div');
     row.className = 'token-row';
-
+ 
     const reportOptions = currentReports.map(r =>
       `<option value="${r.id}" ${mapping.report_id === r.id ? 'selected' : ''}>${r.report_name}</option>`
     ).join('');
-
+ 
     row.innerHTML = `
       <div class="token-name">{{${t.token}}}</div>
       <select data-token="${t.token}" data-field="report_id">
@@ -293,17 +300,17 @@ function renderTokens() {
     `;
     tokensList.appendChild(row);
   });
-
+ 
   tokensList.querySelectorAll('select').forEach(sel => {
     sel.addEventListener('change', (e) => saveMappingChange(e.target));
   });
 }
-
+ 
 async function saveMappingChange(el) {
   const token = el.dataset.token;
   const field = el.dataset.field;
   const value = el.value;
-
+ 
   const existing = currentMappings[token] || {
     client_id: currentClient.id,
     token: token,
@@ -311,16 +318,16 @@ async function saveMappingChange(el) {
     report_id: null,
     config: {}
   };
-
+ 
   existing[field] = value === '' ? null : value;
   if (!existing.operation) existing.operation = 'manual';
-
+ 
   const { data, error } = await db
     .from('client_mappings')
     .upsert(existing, { onConflict: 'client_id,token' })
     .select()
     .single();
-
+ 
   if (error) {
     console.error('Mapping save error:', error);
     return;
@@ -328,7 +335,7 @@ async function saveMappingChange(el) {
   currentMappings[token] = data;
   renderTokens();
 }
-
+ 
 // =========================================================
 // EMILY CHAT BUBBLE
 // =========================================================
@@ -339,22 +346,22 @@ const emilyInput = document.getElementById('emilyInput');
 const emilySend = document.getElementById('emilySend');
 const emilyClose = document.getElementById('emilyClose');
 const emilyExpand = document.getElementById('emilyExpand');
-
+ 
 emilyBubble.addEventListener('click', () => {
   emilyPanel.classList.add('open');
   emilyBubble.style.display = 'none';
   emilyInput.focus();
 });
-
+ 
 emilyClose.addEventListener('click', () => {
   emilyPanel.classList.remove('open');
   emilyBubble.style.display = 'block';
 });
-
+ 
 emilyExpand.addEventListener('click', () => {
   emilyPanel.classList.toggle('expanded');
 });
-
+ 
 emilySend.addEventListener('click', sendEmilyMessage);
 emilyInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -362,7 +369,7 @@ emilyInput.addEventListener('keydown', (e) => {
     sendEmilyMessage();
   }
 });
-
+ 
 function emilySay(html) {
   const msg = document.createElement('div');
   msg.className = 'msg emily';
@@ -371,7 +378,7 @@ function emilySay(html) {
   emilyMessages.scrollTop = emilyMessages.scrollHeight;
   saveChatMessage('assistant', msg.textContent);
 }
-
+ 
 function userSay(text) {
   const msg = document.createElement('div');
   msg.className = 'msg user';
@@ -380,7 +387,7 @@ function userSay(text) {
   emilyMessages.scrollTop = emilyMessages.scrollHeight;
   saveChatMessage('user', text);
 }
-
+ 
 async function saveChatMessage(role, content) {
   if (!currentClient) return;
   await db.from('client_chat_messages').insert({
@@ -389,16 +396,16 @@ async function saveChatMessage(role, content) {
     content
   });
 }
-
+ 
 async function loadChatHistory() {
-  if (!currentClient) return;
+  if (!currentClient) return false;
   const { data } = await db
     .from('client_chat_messages')
     .select('*')
     .eq('client_id', currentClient.id)
     .order('created_at', { ascending: true })
     .limit(50);
-
+ 
   if (data && data.length > 0) {
     data.forEach(m => {
       const el = document.createElement('div');
@@ -411,44 +418,45 @@ async function loadChatHistory() {
   }
   return false;
 }
-
+ 
 async function greetUser() {
   const hadHistory = await loadChatHistory();
   if (hadHistory) return;
-
+ 
   const first = `Hey! 👋 I'm Emily, your mapping assistant for <strong>${currentClient.name}</strong>. `;
-
-  if (currentTokens.length === 0) {
-    emilySay(first + `Start by uploading your Word template — I'll scan it for <code>{{tokens}}</code>.`);
+ 
+  if (!currentTemplate) {
+    emilySay(first + `Start by uploading your Word template — it doesn't need any tokens yet, we'll add them together.`);
+  } else if (currentTokens.length === 0) {
+    emilySay(first + `I see your template — no tokens yet. When we're wired up, I'll walk through it with you and figure out what should be tokenized.`);
   } else if (currentReports.length === 0) {
     emilySay(first + `I see <strong>${currentTokens.length} tokens</strong> ready. Upload some sample reports so we can start mapping.`);
   } else {
     emilySay(first + `Looks like we're set up — let's map those ${currentTokens.length} tokens.`);
   }
 }
-
+ 
 async function sendEmilyMessage() {
   const text = emilyInput.value.trim();
   if (!text) return;
   userSay(text);
   emilyInput.value = '';
-
-  // typing indicator
+ 
   const typing = document.createElement('div');
   typing.className = 'msg emily typing';
   typing.textContent = 'Emily is typing…';
   emilyMessages.appendChild(typing);
   emilyMessages.scrollTop = emilyMessages.scrollHeight;
-
+ 
   // TODO Step 5: real Anthropic call via backend
-  // For now: local placeholder response
   setTimeout(() => {
     typing.remove();
-    emilySay(`Got it — I'll be able to help with mapping once the AI engine is wired up (that's Step 5 of our build). For now, use the dropdowns on the token list to map manually.`);
+    emilySay(`I hear you — but I need to be honest: my brain isn't wired up yet. That's Step 5 of our build (after we set up the Python engine in Step 4). Once I'm live, I'll be able to read your template and reports and help tokenize + map everything.`);
   }, 900);
 }
-
+ 
 // =========================================================
 // INIT
 // =========================================================
 loadClient();
+ 
