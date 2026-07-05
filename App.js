@@ -3,7 +3,7 @@
 // Emily's Snapshot Studio — dashboard logic
 // =========================================================
  
-const supabase = window.supabase.createClient(
+const db = window.supabase.createClient(
   window.SUPABASE_URL,
   window.SUPABASE_ANON_KEY
 );
@@ -37,7 +37,7 @@ nameInput.addEventListener('input', () => {
 async function loadClients() {
   honeycombEl.innerHTML = '';
  
-  const { data: clients, error } = await supabase
+  const { data: clients, error } = await db
     .from('clients')
     .select(`
       id, slug, name, created_at,
@@ -52,7 +52,6 @@ async function loadClients() {
     return;
   }
  
-  // stats
   const total = clients.length;
   const ready = clients.filter(c =>
     c.client_templates?.length > 0 && c.client_mappings?.length > 0
@@ -63,15 +62,12 @@ async function loadClients() {
   readyCountEl.textContent = ready;
   setupCountEl.textContent = setup;
  
-  // render hexes
   clients.forEach(client => {
     honeycombEl.appendChild(buildHex(client));
   });
  
-  // always add the "+" hex at the end
   honeycombEl.appendChild(buildAddHex());
- 
-  emptyStateEl.style.display = total === 0 ? 'none' : 'none';
+  emptyStateEl.style.display = 'none';
 }
  
 // =========================================================
@@ -118,17 +114,10 @@ function buildAddHex() {
   return wrap;
 }
  
-// =========================================================
-// OPEN CLIENT
-// =========================================================
 function openClient(slug) {
-  // Step 3 will build these pages; for now, log and stub
   window.location.href = `/client.html?slug=${slug}`;
 }
  
-// =========================================================
-// ADD CLIENT MODAL
-// =========================================================
 function openModal() {
   modal.style.display = 'flex';
   nameInput.value = '';
@@ -148,15 +137,12 @@ async function createClient() {
     alert('Both fields are required.');
     return;
   }
- 
   if (!/^[a-z0-9-]+$/.test(slug)) {
     alert('Slug can only contain lowercase letters, numbers, and hyphens.');
     return;
   }
  
-  const { error } = await supabase
-    .from('clients')
-    .insert({ name, slug });
+  const { error } = await db.from('clients').insert({ name, slug });
  
   if (error) {
     alert('Error: ' + error.message);
@@ -167,13 +153,9 @@ async function createClient() {
   loadClients();
 }
  
-// close modal on backdrop click
 modal.addEventListener('click', (e) => {
   if (e.target === modal) closeModal();
 });
  
-// =========================================================
-// INIT
-// =========================================================
 loadClients();
  
