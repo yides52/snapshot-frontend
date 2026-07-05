@@ -126,7 +126,7 @@ async function parseDocx(file) {
   const buf = await file.arrayBuffer();
   const zip = await JSZip.loadAsync(buf);
   const docXml = await zip.file('word/document.xml').async('string');
-  const rawText = docXml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const rawText = _cleanDocxText(docXml);
   const matches = rawText.match(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g) || [];
   const unique = [...new Set(matches.map(m => m.replace(/[\{\}\s]/g, '')))];
   return { tokens: unique, rawText };
@@ -136,7 +136,32 @@ async function extractRawTextFromBlob(blob) {
   const buf = await blob.arrayBuffer();
   const zip = await JSZip.loadAsync(buf);
   const docXml = await zip.file('word/document.xml').async('string');
-  return docXml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return _cleanDocxText(docXml);
+}
+ 
+/**
+ * Extract clean text from a docx word/document.xml string.
+ * - Strips mc:Fallback blocks (duplicate rendering for old Word versions)
+ * - Only pulls <w:t> tag contents (real user text — skips IDs, shape metadata)
+ * - Preserves paragraph breaks and line breaks
+ */
+function _cleanDocxText(xml) {
+  // Remove fallback rendering (creates duplicates when template uses text boxes)
+  let cleaned = xml.replace(/<mc:Fallback>[\s\S]*?<\/mc:Fallback>/g, '');
+ 
+  // Split into paragraphs on <w:p ...>
+  const paragraphs = cleaned.split(/<w:p[\s>]/);
+  const lines = [];
+  for (const p of paragraphs) {
+    // Get all <w:t ...>content</w:t> in this paragraph
+    const runs = p.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+    const text = runs
+      .map(r => r.replace(/<w:t[^>]*>/, '').replace(/<\/w:t>/, ''))
+      .join('')
+      .trim();
+    if (text) lines.push(text);
+  }
+  return lines.join('\n');
 }
  
 function showTemplateStatus(t) {
@@ -300,6 +325,16 @@ emilyClose.addEventListener('click', () => {
   emilyBubble.style.display = 'block';
 });
 emilyExpand.addEventListener('click', () => emilyPanel.classList.toggle('expanded'));
+ 
+const emilyReset = document.getElementById('emilyReset');
+emilyReset.addEventListener('click', async () => {
+  if (!confirm('Start a fresh chat with Emily? This deletes the current conversation.')) return;
+  await db.from('client_chat_messages').delete().eq('client_id', currentClient.id);
+  emilyMessages.innerHTML = '';
+  chatHistory = [];
+  greetUser();
+});
+ 
 emilySend.addEventListener('click', sendEmilyMessage);
 emilyInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendEmilyMessage(); }
@@ -453,4 +488,3 @@ function renderMarkdownLite(text) {
 // INIT
 // =========================================================
 loadClient();
- 
