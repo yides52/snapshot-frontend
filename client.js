@@ -1,3 +1,4 @@
+
 // =========================================================
 // Client Setup Page — logic (Step 5: Emily wired to Anthropic)
 // =========================================================
@@ -401,6 +402,7 @@ async function sendEmilyMessage() {
       client_name: currentClient.name,
       template_text: (currentTemplate?.raw_text || '').slice(0, 2000),
       report_names: currentReports.map(r => r.report_name).slice(0, 10),
+      sample_paths: currentReports.map(r => r.sample_path).slice(0, 5),
       current_tokens: currentTokens.map(t => t.token).slice(0, 30),
       current_mappings: Object.values(currentMappings).slice(0, 30).map(m => ({
         token: m.token,
@@ -425,12 +427,26 @@ async function sendEmilyMessage() {
     }
  
     const data = await res.json();
-    emilySay(data.reply || '(no reply)');
+    const rendered = renderMarkdownLite(data.reply || '(no reply)');
+    emilySay(rendered);
   } catch (err) {
     clearTimeout(coldTimer);
     typing.remove();
     emilySay(`⚠️ Couldn't reach the engine. Check that Render is running. Error: ${err.message}`);
   }
+}
+ 
+// Minimal markdown → HTML: bold, italics, code, line breaks
+function renderMarkdownLite(text) {
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(?!\s)([^*]+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
 }
  
 // =========================================================
