@@ -18,20 +18,19 @@
     <div class="blob b3"></div>
     <div class="blob b4"></div>
   </div>
-
+ 
   <header class="topbar">
     <div class="brand">
-      <a href="/" class="back-link">←</a>
+      <a href="index.html" class="back-link">←</a>
       <h1 id="clientTitle">Loading…</h1>
     </div>
     <div class="topbar-actions">
-      <button class="ghost-btn" onclick="location.href='/'">Dashboard</button>
+      <button class="ghost-btn" onclick="location.href='index.html'">Dashboard</button>
       <button class="primary-btn" id="runWeekBtn">▶ Run This Week</button>
     </div>
   </header>
-
+ 
   <main class="client-page">
-    <!-- Uploads column -->
     <section class="panel uploads-panel">
       <h2>1. Word Template</h2>
       <p class="hint">Upload the .docx template with <code>{{tokens}}</code> where data should go.</p>
@@ -43,7 +42,7 @@
         </div>
       </div>
       <div class="uploaded-item" id="templateStatus" style="display:none;"></div>
-
+ 
       <h2 style="margin-top:32px;">2. Sample Reports</h2>
       <p class="hint">Upload one or more Excel files from QBD or QBO. Tag each.</p>
       <div class="drop-zone" id="reportDrop">
@@ -55,8 +54,7 @@
       </div>
       <div class="reports-list" id="reportsList"></div>
     </section>
-
-    <!-- Tokens/Mapping column -->
+ 
     <section class="panel tokens-panel">
       <h2>3. Token Mapping</h2>
       <p class="hint">Tokens detected in your template. Map each to a source, or mark manual.</p>
@@ -65,14 +63,13 @@
       </div>
     </section>
   </main>
-
-  <!-- Emily floating chat bubble -->
+ 
   <div class="emily-chat" id="emilyChat">
     <button class="emily-bubble" id="emilyBubble" title="Chat with Emily">
       <div class="emily-avatar">E</div>
       <div class="emily-pulse"></div>
     </button>
-
+ 
     <div class="emily-panel" id="emilyPanel">
       <header class="emily-header">
         <div class="emily-header-left">
@@ -94,10 +91,11 @@
       </div>
     </div>
   </div>
-
+ 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="config.js"></script>
   <script src="client.js"></script>
 </body>
 </html>
+ 
