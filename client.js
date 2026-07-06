@@ -186,6 +186,24 @@ function showTemplateStatus(t) {
     </div>
     <button class="ghost-btn" style="padding:6px 12px;font-size:12px;" onclick="replaceTemplate()">Replace</button>
   `;
+  loadTemplatePreview();
+}
+ 
+async function loadTemplatePreview() {
+  if (!currentTemplate?.png_path) return;
+  const previewPanel = document.getElementById('previewPanel');
+  const previewImg = document.getElementById('templatePreviewImg');
+  try {
+    const { data, error } = await db.storage
+      .from('client-files')
+      .createSignedUrl(currentTemplate.png_path, 3600);
+    if (error) throw error;
+    previewImg.src = data.signedUrl;
+    previewPanel.style.display = 'block';
+    previewImg.onclick = () => previewImg.classList.toggle('zoomed');
+  } catch (e) {
+    console.warn('Preview load failed:', e);
+  }
 }
 window.replaceTemplate = () => templateInput.click();
  
