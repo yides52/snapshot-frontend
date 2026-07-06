@@ -23,6 +23,9 @@
     <div class="brand">
       <a href="index.html" class="back-link">←</a>
       <h1 id="clientTitle">Loading…</h1>
+      <button class="tpl-icon" id="tplIcon" title="View template" style="display:none;">
+        <span>📄</span>
+      </button>
     </div>
     <div class="topbar-actions">
       <button class="ghost-btn" onclick="location.href='index.html'">Dashboard</button>
@@ -31,45 +34,93 @@
   </header>
  
   <main class="client-page">
-    <section class="panel uploads-panel">
-      <h2>1. Word Template</h2>
-      <p class="hint">Upload the .docx template with <code>{{tokens}}</code> where data should go.</p>
-      <div class="drop-zone" id="templateDrop">
-        <input type="file" id="templateInput" accept=".docx" hidden>
-        <div class="drop-inner">
-          <div class="drop-icon">📄</div>
-          <div class="drop-text">Drop .docx or click to upload</div>
+    <!-- Compact setup strip -->
+    <section class="setup-strip">
+      <div class="setup-card template-card">
+        <div class="setup-title">Template</div>
+        <div id="templateStatus" class="template-status">
+          <div class="drop-zone-sm" id="templateDrop">
+            <input type="file" id="templateInput" accept=".docx" hidden>
+            <span>📄 Drop .docx</span>
+          </div>
         </div>
       </div>
-      <div class="uploaded-item" id="templateStatus" style="display:none;"></div>
  
-      <h2 style="margin-top:32px;">2. Sample Reports</h2>
-      <p class="hint">Upload one or more Excel files from QBD or QBO. Tag each.</p>
-      <div class="drop-zone" id="reportDrop">
-        <input type="file" id="reportInput" accept=".xlsx,.xls,.csv" hidden>
-        <div class="drop-inner">
-          <div class="drop-icon">📊</div>
-          <div class="drop-text">Drop Excel/CSV or click to upload</div>
-        </div>
+      <div class="setup-card reports-card">
+        <div class="setup-title">Reports</div>
+        <div class="reports-row" id="reportsList"></div>
+        <button class="add-report-btn" id="addReportBtn">
+          <input type="file" id="reportInput" accept=".xlsx,.xls,.csv" hidden>
+          + Add report
+        </button>
       </div>
-      <div class="reports-list" id="reportsList"></div>
     </section>
  
-    <section class="panel preview-panel" id="previewPanel" style="display:none;">
-      <h2>Template Preview</h2>
-      <p class="hint">This is what Emily sees. Zoom by clicking the image.</p>
-      <img id="templatePreviewImg" alt="Template preview">
-    </section>
+    <!-- Token grid -->
+    <section class="tokens-section">
+      <div class="tokens-header">
+        <h2>Tokens</h2>
+        <p class="hint">Click any token to edit its mapping. Emily can propose new ones — talk to her.</p>
+      </div>
  
-    <section class="panel tokens-panel">
-      <h2>3. Token Mapping</h2>
-      <p class="hint">Tokens detected in your template. Map each to a source, or mark manual.</p>
-      <div class="tokens-list" id="tokensList">
-        <div class="tokens-empty">Upload a template to detect tokens.</div>
+      <div class="tokens-grid" id="tokensGrid">
+        <div class="tokens-empty" id="tokensEmpty">
+          <div class="empty-icon">✨</div>
+          <div class="empty-text">No tokens yet</div>
+          <div class="empty-sub">Ask Emily to propose them → click her bubble bottom-right</div>
+        </div>
       </div>
     </section>
   </main>
  
+  <!-- Template preview modal (small icon opens this) -->
+  <div class="modal-backdrop tpl-modal" id="tplModal" style="display:none;">
+    <div class="tpl-modal-inner">
+      <button class="modal-close" id="tplModalClose">×</button>
+      <img id="templateModalImg" alt="Template">
+    </div>
+  </div>
+ 
+  <!-- Token editor modal (click a token card opens this) -->
+  <div class="modal-backdrop" id="tokenModal" style="display:none;">
+    <div class="modal token-modal">
+      <button class="modal-close" id="tokenModalClose">×</button>
+      <h2 id="tokenModalTitle">Edit Token</h2>
+      <p class="hint" id="tokenModalNote"></p>
+ 
+      <label>
+        Source Report
+        <select id="tokenSource"></select>
+      </label>
+ 
+      <label>
+        Operation
+        <select id="tokenOperation">
+          <option value="manual">Type manually each week</option>
+          <option value="cell">Single cell</option>
+          <option value="value_at_label">Value at label</option>
+          <option value="sum">Column sum</option>
+          <option value="section_sum">Sum under section</option>
+          <option value="count">Row count</option>
+        </select>
+      </label>
+ 
+      <div id="tokenConfig"></div>
+ 
+      <div class="excel-preview" id="excelPreview" style="display:none;">
+        <div class="excel-preview-title">Source data</div>
+        <div id="excelPreviewTable"></div>
+      </div>
+ 
+      <div class="modal-actions">
+        <button class="ghost-btn" id="tokenDeleteBtn">Delete</button>
+        <button class="ghost-btn" id="tokenCancelBtn">Cancel</button>
+        <button class="primary-btn" id="tokenSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- Emily floating chat -->
   <div class="emily-chat" id="emilyChat">
     <button class="emily-bubble" id="emilyBubble" title="Chat with Emily">
       <div class="emily-avatar">E</div>
