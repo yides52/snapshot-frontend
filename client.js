@@ -1,3 +1,4 @@
+
 // =========================================================
 // Client Setup Page — logic (Step 5: Emily wired to Anthropic)
 // =========================================================
@@ -52,9 +53,12 @@ async function loadExistingData() {
   if (templates && templates.length > 0) {
     currentTemplate = templates[0];
     currentTokens = (currentTemplate.tokens || []).filter(t => t.token);
-    // Retrieve stored PNG path (we hide it in the tokens array as a special marker)
     const pngMarker = (currentTemplate.tokens || []).find(t => t._png_path);
     if (pngMarker) currentTemplate.png_path = pngMarker._png_path;
+    // Fallback — guess the PNG path from the docx path
+    if (!currentTemplate.png_path && currentTemplate.file_path) {
+      currentTemplate.png_path = currentTemplate.file_path.replace(/\.docx$/i, '.preview.png');
+    }
     showTemplateStatus(currentTemplate);
     renderTokens();
   }
@@ -464,6 +468,8 @@ async function sendEmilyMessage() {
     }));
  
     const body = {
+      client_id: currentClient.id,
+      template_id: currentTemplate?.id || null,
       client_name: currentClient.name,
       template_png_path: currentTemplate?.png_path || null,
       report_names: currentReports.map(r => r.report_name).slice(0, 10),
@@ -494,6 +500,13 @@ async function sendEmilyMessage() {
     const data = await res.json();
     const rendered = renderMarkdownLite(data.reply || '(no reply)');
     emilySay(rendered);
+ 
+    // If Emily took actions (add_tokens / save_mapping), refresh the UI
+    if (data.actions && data.actions.length > 0) {
+      const actionSummary = data.actions.map(a => `• ${a.result}`).join('<br>');
+      emilySay(`<em style="opacity:.7">Emily changes:</em><br>${actionSummary}`);
+      await loadExistingData();
+    }
   } catch (err) {
     clearTimeout(coldTimer);
     typing.remove();
